@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chatbot Assistant</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f9fafb;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            color: #333;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            background: #ffffff;
+        }
+
+        /* --------------------
+           SIDEBAR (off-canvas)
+           -------------------- */
+        .sidebar {
+            width: 260px;
+            background: #e9eff5;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            border-right: 1px solid #dbe1e8;
+            transform: translateX(-260px);
+            transition: transform 0.25s ease-in-out, background 0.3s ease, border-color 0.3s ease;
+            z-index: 1000;
+        }
+
+        /* Açık olduğunda solda gözükür */
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar button {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: #2563eb;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin: 0 auto 16px; /* Ortaya yerleştirme */
+        }
+
+        .sidebar button:hover {
+            background: #1d4ed8;
+        }
+
+        .user-chat button {
+            width: 100%;
+            background-color: #ffffff;
+            color: #1f2937;
+            border: 1px solid #d1d5db;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: left;
+            font-size: 0.95em;
+            margin-bottom: 8px;
+            transition: background 0.2s ease, color 0.3s ease, border-color 0.3s ease;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: thin;
+        }
+
+        .user-chat button:hover {
+            background-color: #e0e7ff;
+        }
+
+        .user-chat .active-chat {
+            background: #3b82f6;
+            color: #ffffff;
+            font-weight: bold;
+            pointer-events: none;
+            cursor: default;
+        }
+
+        /* ------------
+           CHAT ALANI
+           ------------ */
+        .chat-area {
+            flex-grow: 1;
+            margin-left: 0; /* Başlangıçta sidebar kapalı, boşluk yok */
+            display: flex;
+            flex-direction: column;
+            background: #fdfdfd;
+            position: relative;
+            transition: margin-left 0.25s ease-in-out, background 0.3s ease;
+        }
+
+        /* Eğer sidebar açıkken chat-area’ya sol boşluk ekle */
+        .chat-area.with-sidebar {
+            margin-left: 260px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 30px;
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Burger butonu */
+        .burger-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin-right: 16px;
+            color: inherit;
+        }
+
+        /* Tema geçiş butonu (dairesel, animasyonlu) */
+        .theme-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-right: 16px;
+            transition: background 0.3s ease, transform 0.5s ease;
+        }
+
+        .theme-btn:hover {
+            background: #d1d5db;
+            transform: scale(1.1);
+        }
+
+        /* Döndürme animasyonu sınıfı */
+        .theme-btn.rotate {
+            transform: rotate(360deg);
+        }
+
+        .top-bar h1 {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+            transition: color 0.3s ease;
+        }
+
+        .top-bar button.logout-btn {
+            padding: 8px 16px;
+            background: #ef4444;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s ease;
+        }
+
+        .top-bar button.logout-btn:hover {
+            background: #dc2626;
+        }
+
+        .chat-box {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px 40px;
+            background: linear-gradient(to bottom, #ffffff, #f9fafb);
+            display: flex;
+            flex-direction: column;
+            transition: background 0.3s ease;
+        }
+
+        .chat-message {
+            padding: 12px 20px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            max-width: 75%;
+            font-size: 1em;
+            line-height: 1.5;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+            word-wrap: break-word;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .chat-message.user {
+            align-self: flex-end;
+            background: #dbeafe;
+            color: #1e3a8a;
+            border-radius: 18px 18px 0 18px;
+        }
+
+        .chat-message.bot {
+            align-self: flex-start;
+            background: #f3f4f6;
+            color: #111827;
+            border-radius: 18px 18px 18px 0;
+        }
+
+        .input-area {
+            display: flex;
+            padding: 20px 30px;
+            background: #f1f5f9;
+            border-top: 1px solid #e2e8f0;
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .input-area textarea {
+            flex-grow: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 16px;
+            background: #ffffff;
+            color: #111827;
+            font-size: 1em;
+            outline: none;
+            box-shadow: 0 0 0 1px #d1d5db inset;
+            resize: none;
+            transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .input-area button {
+            padding: 12px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-left: 12px;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 3px 6px rgba(59, 130, 246, 0.3);
+        }
+
+        .input-area button:hover {
+            background: #2563eb;
+        }
+
+        .typing-indicator {
+            font-style: italic;
+            color: #9ca3af;
+            margin: 10px 40px;
+            display: none;
+        }
+
+        /* --------------------
+           DARK MODE STYLES
+           -------------------- */
+        body.dark-mode {
+            background: #111827;
+            color: #f9fafb;
+        }
+
+        body.dark-mode .container {
+            background: #1f2937;
+        }
+
+        body.dark-mode .sidebar {
+            background: #1f2937;
+            border-right-color: #374151;
+        }
+
+        body.dark-mode .sidebar button {
+            background: #4b5563;
+            color: #f9fafb;
+            box-shadow: none;
+        }
+
+        body.dark-mode .sidebar button:hover {
+            background: #6b7280;
+        }
+
+        body.dark-mode .user-chat button {
+            background-color: #374151;
+            color: #f9fafb;
+            border: 1px solid #4b5563;
+        }
+
+        body.dark-mode .user-chat button:hover {
+            background-color: #4b5563;
+        }
+
+        /* Aktif sohbetin koyu modda net görünmesi için renk ayarı */
+        body.dark-mode .user-chat .active-chat {
+            background: #2563eb;
+            color: #f9fafb;
+        }
+
+        body.dark-mode .chat-area {
+            background: #1f2937;
+        }
+
+        body.dark-mode .top-bar {
+            background: #1f2937;
+            border-bottom-color: #374151;
+        }
+
+        body.dark-mode .top-bar h1 {
+            color: #f9fafb;
+        }
+
+        body.dark-mode .theme-btn {
+            background: #374151;
+            color: #f9fafb;
+        }
+
+        body.dark-mode .logout-btn {
+            background: #ef4444;
+            color: #f9fafb;
+        }
+
+        body.dark-mode .chat-box {
+            background: #111827;
+        }
+
+        body.dark-mode .chat-message.user {
+            background: #374151;
+            color: #f9fafb;
+        }
+
+        body.dark-mode .chat-message.bot {
+            background: #4b5563;
+            color: #f9fafb;
+        }
+
+        body.dark-mode .input-area {
+            background: #1f2937;
+            border-top-color: #374151;
+        }
+
+        body.dark-mode .input-area textarea {
+            background: #374151;
+            color: #f9fafb;
+            box-shadow: 0 0 0 1px #4b5563 inset;
+        }
+
+        body.dark-mode .input-area button {
+            background: #2563eb;
+            color: #f9fafb;
+        }
+
+        body.dark-mode .input-area button:hover {
+            background: #1e40af;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Sol taraf: Sidebar (başlangıçta gizli) -->
+    <div class="sidebar" id="sidebar">
+        <div>
+            <button class="new-chat-button" onclick="newChat(existingChat=false)">+</button>
+        </div>
+        <div class="user-chats" id="user-chats"></div>
+    </div>
+
+    <!-- Sağ taraf: Chat alanı -->
+    <div class="chat-area" id="chat-area">
+        <!-- Üst bar: Burger + Başlık + Tema Butonu + Çıkış -->
+        <div class="top-bar">
+            <!-- Burger Menüsü Butonu -->
+            <button class="burger-btn" onclick="toggleSidebar()">☰</button>
+            <h1>Chatbot Assistant</h1>
+
+            <!-- Tema Geçiş Butonu -->
+            <button id="theme-toggle" class="theme-btn" onclick="toggleTheme()">🌙</button>
+
+            <!-- Çıkış Yap Butonu -->
+            <button class="logout-btn" onclick="logout()">Çıkış Yap</button>
+        </div>
+
+        <div class="chat-box" id="chat-box">
+            <!-- Sohbet mesajları buraya gelecek -->
+        </div>
+        <div class="typing-indicator" id="typing-indicator">Yazıyor...</div>
+        <div class="input-area">
+            <textarea id="user-input" rows="3" placeholder="Mesajınızı girin..."></textarea>
+            <button onclick="sendMessagetoAssistant()" type="button">Send</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let chat_id_counter = 0;
+    let active_chat_history = {};
+    let active_chat_id = 0;
+    let userChatDiv = document.getElementById("user-chats");
+    let sidebar = document.getElementById("sidebar");
+    let chatArea = document.getElementById("chat-area");
+    let themeButton = document.getElementById("theme-toggle");
+
+    // Sidebar’ı açıp kapama işlevi
+    function toggleSidebar() {
+        sidebar.classList.toggle("open");
+        chatArea.classList.toggle("with-sidebar");
+    }
+
+    // Tema geçiş işlevi (animasyonlu)
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+
+        // İkon ve animasyon
+        if (document.body.classList.contains('dark-mode')) {
+            themeButton.textContent = '☀️';
+        } else {
+            themeButton.textContent = '🌙';
+        }
+        themeButton.classList.add('rotate');
+        setTimeout(() => themeButton.classList.remove('rotate'), 500);
+    }
+
+    // Sayfa yüklendiğinde ilk çalışacak fonksiyon
+    async function init() {
+        await loadChatHistory();
+        if (!userChatDiv.hasChildNodes()) {
+            console.log("No chats found, creating first chat.");
+            newChat(false, true);
+        } else {
+            // Eğer en az bir sohbet varsa, ilkini aktif yap
+            const chatButtons = document.querySelectorAll('.chat-button');
+            console.log(chatButtons[0].id)
+            let firstChat = chatButtons[0]
+            let firstChatId = chatButtons[0].id
+            if (firstChat) {
+                firstChat.classList.add("active-chat");
+                active_chat_id = firstChatId
+                changeActiveSession();
+            }
+        }
+        await get_requested_chat_history();
+        renderConversationHistory(active_chat_history);
+    }
+
+    init();
+
+    async function loadChatHistory() {
+        console.log("load chat history working");
+        try {
+            let response = await fetch('http://127.0.0.1:5000/api/session', {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json'},
+            });
+            let data = await response.json();
+            let session_count = data['session_count'];
+            console.log("session count is :", session_count.length);
+            for (let i = 0; i < session_count.length; i++) {
+                chat_id_counter = session_count[i]
+                newChat(true);
+            }
+        } catch (error) {
+            console.error('Error loading chat history:', error);
+            appendMessage("An error occurred. Please try again.", 'bot');
+        }
+    }
+
+    function newChat(existingChat, firstChat = false) {
+        if (firstChat) {
+            let newChatButton = document.createElement("button");
+            let chatDiv = document.createElement("div");
+            let allChats = document.getElementById('user-chats');
+            let new_id = crypto.randomUUID()
+            active_chat_id = new_id;
+            chatDiv.className = "user-chat";
+            chatDiv.style.display = "flex";
+            chatDiv.style.alignItems = "center";
+            chatDiv.style.justifyContent = "space-between";
+            newChatButton.id = new_id
+            newChatButton.classList.add("chat-button");
+            newChatButton.addEventListener("click", changeChat);
+
+            let deleteIcon = document.createElement("span");
+            deleteIcon.innerHTML = "🗑️";
+            deleteIcon.style.cursor = "pointer";
+            deleteIcon.style.marginLeft = "8px";
+            deleteIcon.addEventListener("click", function (e) {
+                e.stopPropagation();
+                deleteChat(newChatButton.id);
+            });
+
+            chatDiv.appendChild(newChatButton);
+            chatDiv.appendChild(deleteIcon);
+            allChats.appendChild(chatDiv);
+            newChatButton.innerText = active_chat_id
+            let activeChat = document.getElementById(active_chat_id);
+            if (activeChat) {
+                activeChat.classList.add("active-chat");
+                changeActiveSession();
+            }
+        } else {
+            if (!existingChat) {
+                chat_id_counter = crypto.randomUUID()
+                fetch('http://127.0.0.1:5000/api/session', {
+                    method: 'UPDATE',
+                    headers: {'Content-Type': 'application/json'},
+                });
+            }
+            let newChatButton = document.createElement("button");
+            let chatDiv = document.createElement("div");
+            let allChats = document.getElementById('user-chats');
+            let new_id = crypto.randomUUID()
+            if (existingChat) {
+                new_id = chat_id_counter
+            }
+            chatDiv.className = "user-chat";
+            chatDiv.style.display = "flex";
+            chatDiv.style.alignItems = "center";
+            chatDiv.style.justifyContent = "space-between";
+            newChatButton.id = new_id
+            newChatButton.classList.add("chat-button");
+            newChatButton.innerText = new_id
+            newChatButton.addEventListener("click", changeChat);
+
+            let deleteIcon = document.createElement("span");
+            deleteIcon.innerHTML = "🗑️";
+            deleteIcon.style.cursor = "pointer";
+            deleteIcon.style.marginLeft = "8px";
+            deleteIcon.addEventListener("click", function (e) {
+                e.stopPropagation();
+                deleteChat(newChatButton.id);
+            });
+
+            chatDiv.appendChild(newChatButton);
+            chatDiv.appendChild(deleteIcon);
+            allChats.appendChild(chatDiv);
+        }
+
+    }
+
+    function deleteChat(chatId) {
+        const button = document.getElementById(chatId);
+        if (button && button.parentElement) {
+            button.parentElement.remove();
+        }
+        fetch('http://127.0.0.1:5000/api/deleteChat', {
+            method: "DELETE",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({chat_id: chatId})
+        })
+            .then(response => response.json())
+            .then(data => {
+                // Sohbet silindikten sonra sayfayı yeniden yükle
+                location.reload();
+            })
+            .catch(error => console.error('An error occured'));
+    }
+
+    function changeActiveSession() {
+        fetch('http://127.0.0.1:5000/api/activeSession', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({current_session: active_chat_id})
+        })
+            .then(response => response.json())
+            .then(data => { /* İstersen işlem ekle */
+            })
+            .catch(error => console.error('Change Chat Error:', error));
+    }
+
+    async function get_requested_chat_history() {
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/requestedChatData', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({chat_id: active_chat_id})
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("data_history", data["conversation_history_by_id"]);
+            active_chat_history = data["conversation_history_by_id"];
+
+        } catch (error) {
+            console.error('Change Chat Error:', error);
+        }
+    }
+
+    async function changeChat() {
+        document.querySelectorAll(".chat-button").forEach(b => {
+            b.classList.remove("active-chat");
+        });
+
+        this.classList.add("active-chat");
+        active_chat_id = this.id;
+        console.log("active chat: ", active_chat_id);
+
+        changeActiveSession();
+
+        console.log("chat history fetching...");
+        await get_requested_chat_history();
+        console.log("chat history fetched", active_chat_history);
+        renderConversationHistory(active_chat_history);
+    }
+
+    function logout() {
+        alert('Çıkış yapılıyor...');
+        fetch('http://127.0.0.1:5000/api/logout', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        });
+        window.location.href = 'http://127.0.0.1:5000/login';
+    }
+
+    function appendMessage(text, sender) {
+        var chatBox = document.getElementById('chat-box');
+        var messageDiv = document.createElement('div');
+        messageDiv.className = sender === 'user' ? 'chat-message user' : 'chat-message bot';
+        messageDiv.textContent = text;
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function update_chat_header(header) {
+        let activeChat = document.getElementsByClassName("active-chat")[0];
+        if (activeChat) activeChat.textContent = header;
+    }
+
+    function renderConversationHistory(conversation_history_by_id) {
+        let chatBox = document.getElementById("chat-box");
+        if (!chatBox || !Array.isArray(conversation_history_by_id)) return;
+        console.log("rendering chat history...");
+        chatBox.innerHTML = "";
+        conversation_history_by_id.forEach(entry => {
+            const userMessage = document.createElement("div");
+            userMessage.classList.add("chat-message", "user");
+            userMessage.textContent = entry.question;
+            chatBox.appendChild(userMessage);
+
+            const botMessage = document.createElement("div");
+            botMessage.classList.add("chat-message", "bot");
+            botMessage.textContent = entry.answer;
+            chatBox.appendChild(botMessage);
+        });
+    }
+
+    function sendMessagetoAssistant() {
+        let userMessage = document.getElementById('user-input').value.trim();
+        console.log(userMessage);
+        if (userMessage === '') return;
+
+        appendMessage(userMessage, 'user');
+        document.getElementById('user-input').value = '';
+        document.getElementById('typing-indicator').style.display = 'block';
+
+        fetch('http://127.0.0.1:5000/api/chatbot', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: userMessage})
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                document.getElementById('typing-indicator').style.display = 'none';
+                appendMessage(data.response, 'bot');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('typing-indicator').style.display = 'none';
+                appendMessage("An error occurred. Please try again.", 'bot');
+            });
+    }
+</script>
+</body>
+</html>
